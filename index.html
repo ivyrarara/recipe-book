@@ -95,6 +95,9 @@
             <img src="{{ sel.img }}" style="width: 64px; height: 64px; border-radius: 16px; object-fit: cover; flex-shrink: 0; display: block; margin-top: 4px;">
           </sc-if>
           <div style="flex: 1; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 36px; color: #F2A9C4; line-height: 1.05;">{{ sel.title }}</div>
+          <sc-if value="{{ sel.hasLink }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ sel.clearLink }}" style="cursor: pointer; color: rgba(252,237,230,0.5); font-size: 20px; padding: 4px; flex-shrink: 0; align-self: center;">&times;</div>
+          </sc-if>
           <div onClick="{{ sel.linkClick }}" style="cursor: pointer; color: {{ sel.linkColor }}; padding: 4px; flex-shrink: 0; display: flex; align-items: center;"><svg viewBox="0 0 24 24" width="17.8" height="17.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
         </div>
         <sc-if value="{{ sel.linkEditing }}" hint-placeholder-val="{{ false }}">
@@ -489,11 +492,22 @@ class Component extends DCLogic {
     const { selId, editIdx, editVal } = this.state;
     const r = this.find(selId);
     if (!r || editIdx < 0) return;
-    const v = parseFloat(editVal), base = r.ings[editIdx].q;
-    if (v > 0 && base > 0) {
-      r.factor = v / base;
-      this.setState({ recipes: [...this.state.recipes], editIdx: -1, editVal: '' });
-    } else this.setState({ editIdx: -1, editVal: '' });
+    const ing = r.ings[editIdx], base = ing.q;
+    // Accept "2" or "2 tbsp" — a number optionally followed by a unit.
+    const m = String(editVal).trim().match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+    if (m) {
+      const v = parseFloat(m[1].replace(',', '.')), unit = m[2].trim();
+      if (v > 0 && base > 0) {
+        // Existing amount: rescale the whole recipe proportionally.
+        r.factor = v / base;
+        if (unit) ing.u = unit;
+      } else if (v > 0) {
+        // "to taste" ingredient (no prior amount): set just this one's quantity.
+        ing.q = v / (r.factor || 1);
+        if (unit) ing.u = unit;
+      }
+    }
+    this.setState({ recipes: [...this.state.recipes], editIdx: -1, editVal: '' });
   }
   renderVals() {
     const s = this.state;
@@ -613,7 +627,7 @@ class Component extends DCLogic {
           isNameEditing: s.nameEditIdx === idx, isNameNotEditing: s.nameEditIdx !== idx,
           startNameEdit: () => this.setState({ nameEditIdx: idx, nameEditVal: i.n }),
           remove: () => { r.ings.splice(idx, 1); this.setState({ recipes: [...s.recipes] }); },
-          start: () => i.q != null && this.setState({ editIdx: idx, editVal: String(Math.round(i.q * f * 100) / 100) }),
+          start: () => this.setState({ editIdx: idx, editVal: i.q != null ? String(Math.round(i.q * f * 100) / 100) : '' }),
         })),
         steps: r.steps.map((t, idx) => ({ n: idx + 1, t })),
         mods: r.mods.map((m, idx) => {
@@ -630,6 +644,12 @@ class Component extends DCLogic {
         }),
         resetFactor: () => { r.factor = 1; this.setState({ recipes: [...s.recipes] }); },
         linkColor: r.link ? '#F2A9C4' : 'rgba(252,237,230,0.35)',
+        hasLink: !!r.link,
+        clearLink: () => {
+          if (!window.confirm('Remove this link?')) return;
+          r.link = null;
+          this.setState({ linkEditing: false, recipes: [...this.state.recipes] });
+        },
         linkEditing: s.linkEditing,
         linkInput: s.linkInput,
         linkClick: () => {
