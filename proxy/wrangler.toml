@@ -1,0 +1,16 @@
+# Cloudflare Worker config for the Recipe Book AI-parsing proxy.
+# Deploy:  cd proxy && npx wrangler deploy
+# Set key: npx wrangler secret put ANTHROPIC_API_KEY
+name = "recipe-proxy"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+# Model used for parsing (override if you like). Vision-capable model needed
+# for photo parsing.
+MODEL = "claude-sonnet-5"
+
+# Lock this down to your published site's origin once you know it, e.g.
+# ALLOWED_ORIGIN = "https://ivyrarara.github.io"
+# Leaving it "*" lets any site call this proxy and spend your API quota.
+ALLOWED_ORIGIN = "*"
