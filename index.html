@@ -260,6 +260,28 @@ class Component extends DCLogic {
     return String(Math.round(n * 100) / 100);
   }
   find(id) { return this.state.recipes.find(r => r.id === id); }
+  // ── Persistence: keep the book in localStorage so edits/additions/reorders
+  //    survive a page reload. No backend — this is per-browser storage.
+  STORE_KEY = 'recipeBook.v1';
+  componentDidMount() {
+    try {
+      const raw = localStorage.getItem(this.STORE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved && Array.isArray(saved.recipes)) {
+          this._savedRef = saved.recipes;
+          this.setState({ recipes: saved.recipes, nextId: saved.nextId || this.state.nextId });
+        }
+      }
+    } catch (e) { /* ignore unreadable/blocked storage */ }
+  }
+  persist() {
+    if (this.state.recipes === this._savedRef) return; // recipes unchanged since last save
+    this._savedRef = this.state.recipes;
+    try {
+      localStorage.setItem(this.STORE_KEY, JSON.stringify({ recipes: this.state.recipes, nextId: this.state.nextId }));
+    } catch (e) { /* ignore quota / private-mode errors */ }
+  }
   commitNameEdit() {
     const { selId, nameEditIdx, nameEditVal } = this.state;
     const r = this.find(selId);
@@ -327,6 +349,7 @@ class Component extends DCLogic {
     this.setState({ recipes });
   }
   componentDidUpdate() {
+    this.persist();
     if (!this.pendingFlip) return;
     const prevRects = this.pendingFlip;
     this.pendingFlip = null;
