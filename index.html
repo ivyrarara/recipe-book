@@ -203,7 +203,6 @@
               </div>
             </sc-for>
           </div>
-          <button onClick="{{ parsePending }}" style="width: 100%; margin-top: 12px; padding: 13px 0; border-radius: 999px; border: none; background: #C4342B; color: #FCEDE6; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; cursor: pointer;">{{ parsePendingLabel }}</button>
         </sc-if>
         <input value="{{ addLink }}" onChange="{{ onAddLink }}" class="link-ph" placeholder="Paste a source link (optional)" style="width: 100%; margin-top: 12px; padding: 11px 14px; border: none; border-radius: 8px; background: #3D000B; color: #FCEDE6; font-size: 13px; outline: none; box-sizing: border-box;">
         <div style="display: flex; align-items: center; gap: 10px; margin: 24px 0 16px;">
@@ -438,8 +437,11 @@ class Component extends DCLogic {
     this.setState(s => ({ recipes: [...s.recipes, rec], nextId: id + 1, tab: rec.tab, selId: id, screen: 'book', parsing: false, paste: '', addLink: '', pendingPhotos: [], err: '' }));
   }
   async parseText() {
+    if (this.state.parsing) return;
+    // One CTA for the whole screen: if photos were added, read those; else text.
+    if (this.state.pendingPhotos.length) { this.parseImage(this.state.pendingPhotos.map(p => p.file)); return; }
     const text = this.state.paste.trim();
-    if (!text || this.state.parsing) return;
+    if (!text) return;
     this.setState({ parsing: true, err: '' });
     try {
       const prompt = 'Parse this recipe into strict JSON, no markdown fences, no commentary. LANGUAGE: write every field value (title, tags, ingredient names, units, steps) in the SAME language as the source recipe — if it is Korean keep it Korean, if Chinese keep Chinese, etc. NEVER translate to English or any other language. Only silently fix obvious typos and spelling mistakes. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string]}. Recipe text:\n' + text;
@@ -653,8 +655,6 @@ class Component extends DCLogic {
       openAdd: () => { this.clearPending(); this.setState({ screen: 'add', err: '', addLink: '', pendingPhotos: [] }); },
       hasPending: s.pendingPhotos.length > 0,
       pendingPhotos: s.pendingPhotos.map((p, i) => ({ url: p.url, remove: () => this.removePendingPhoto(i) })),
-      parsePending: () => { if (s.pendingPhotos.length) this.parseImage(s.pendingPhotos.map(p => p.file)); },
-      parsePendingLabel: s.parsing ? 'Reading…' : ('Read ' + s.pendingPhotos.length + (s.pendingPhotos.length > 1 ? ' photos' : ' photo') + ' → recipe'),
       isAdd: s.screen === 'add',
       closeAdd: () => { this.clearPending(); this.setState({ screen: 'book', pendingPhotos: [] }); },
       paste: s.paste,
