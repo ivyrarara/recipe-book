@@ -78,7 +78,10 @@
               <div style="font-family: 'Instrument Serif', serif; font-size: 20px; color: #FCEDE6;">{{ r.title }}</div>
               <div style="font-size: 12px; color: rgba(252,237,230,0.6); margin-top: 3px;">{{ r.meta }}</div>
             </div>
-            <div onClick="{{ r.removeRecipe }}" onPointerDown="{{ r.stopDown }}" style="cursor: pointer; color: rgba(252,237,230,0.5); opacity: 0.45; padding: 2px 6px; flex-shrink: 0; display: flex; align-items: center;"><svg viewBox="0 0 24 24" width="31.68" height="31.68" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" style="display: block;"><path d="M6 6 L18 18 M18 6 L6 18"></path></svg></div>
+            <div style="display: flex; flex-direction: column; align-self: stretch; justify-content: space-between; align-items: center; flex-shrink: 0;">
+              <div onClick="{{ r.toggleFav }}" onPointerDown="{{ r.stopDown }}" style="cursor: pointer; color: {{ r.favColor }}; opacity: 0.7; font-size: 27px; line-height: 1; padding: 0 4px;">{{ r.favIcon }}</div>
+              <div onClick="{{ r.removeRecipe }}" onPointerDown="{{ r.stopDown }}" style="cursor: pointer; color: rgba(252,237,230,0.5); opacity: 0.45; padding: 0 4px; display: flex; align-items: center;"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" style="display: block;"><path d="M6 6 L18 18 M18 6 L6 18"></path></svg></div>
+            </div>
           </div>
         </sc-for>
       </div>
@@ -581,6 +584,13 @@ class Component extends DCLogic {
         open: () => { if (!this.dragMoved) this.setState({ selId: r.id, editIdx: -1, titleEditing: false }); },
         // Stop the row's press/drag from arming when tapping the delete button.
         stopDown: e => { if (e && e.stopPropagation) e.stopPropagation(); },
+        favIcon: r.fav ? '★' : '☆',
+        favColor: r.fav ? '#F2A9C4' : 'rgba(252,237,230,0.4)',
+        toggleFav: e => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          const rec = this.find(r.id);
+          if (rec) { rec.fav = !rec.fav; this.setState({ recipes: [...this.state.recipes] }); }
+        },
         removeRecipe: e => {
           if (e && e.stopPropagation) e.stopPropagation();
           if (!window.confirm('Delete “' + r.title + '”? This can’t be undone.')) return;
