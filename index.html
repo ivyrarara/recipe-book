@@ -41,6 +41,7 @@
 <style>
   html, body { margin: 0; padding: 0; }
   input::placeholder { color: #A8324B; opacity: 0.7; }
+  input.link-ph::placeholder { color: #FCEDE6; opacity: 0.5; }
   textarea::placeholder { color: #F2A9C4; opacity: 0.85; }
   input, textarea, button { font-family: inherit; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -179,12 +180,13 @@
       <div style="position: absolute; inset: 0; z-index: 30; background: #550010; color: #FCEDE6; overflow-y: auto; padding: 10px 22px 40px; box-sizing: border-box;">
         <button onClick="{{ closeAdd }}" style="background: none; border: none; color: #F2A9C4; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; cursor: pointer; padding: 8px 0;">&larr; never mind</button>
         <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 34px; color: #F2A9C4; line-height: 1.1; margin-top: 10px;">Add a recipe</div>
-        <div style="font-size: 13px; color: rgba(252,237,230,0.7); margin-top: 8px; line-height: 1.5;">Paste any recipe text &mdash; a screenshot caption, a message from mom, a blog wall-of-text. I&rsquo;ll fill in the ingredients, how-to and a modified version.</div>
+        <div style="font-size: 13px; color: rgba(252,237,230,0.7); margin-top: 8px; line-height: 1.5;">Paste any recipe text &mdash; a screenshot caption, a message from mom, a blog wall-of-text. I&rsquo;ll fill in the ingredients and how-to.</div>
         <div onClick="{{ photoClick }}" onDragOver="{{ photoDragOver }}" onDrop="{{ photoDrop }}" style="position: relative; border-radius: 16px; padding: 26px 18px; text-align: center; cursor: pointer; margin-top: 18px; background: #480009; border: 2px dotted rgba(242,169,196,0.75);">
           <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; color: #F2A9C4;">Snap or drop a photo</div>
-          <div style="font-size: 12px; color: rgba(252,237,230,0.6); margin-top: 6px;">of a cookbook page or handwritten card</div>
-          <input ref="{{ setFileRef }}" type="file" accept="image/*" onChange="{{ photoFileChange }}" style="display: none;">
+          <div style="font-size: 12px; color: rgba(252,237,230,0.6); margin-top: 6px;">of a cookbook page or handwritten card &middot; add several for a multi-page recipe</div>
+          <input ref="{{ setFileRef }}" type="file" accept="image/*" multiple="{{ true }}" onChange="{{ photoFileChange }}" style="display: none;">
         </div>
+        <input value="{{ addLink }}" onChange="{{ onAddLink }}" class="link-ph" placeholder="Paste a source link (optional)" style="width: 100%; margin-top: 12px; padding: 11px 14px; border: none; border-radius: 8px; background: #3D000B; color: #FCEDE6; font-size: 13px; outline: none; box-sizing: border-box;">
         <div style="display: flex; align-items: center; gap: 10px; margin: 24px 0 16px;">
           <div style="flex: 1; height: 0.6px; background: rgba(242,169,196,0.4);"></div>
           <div style="font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: rgba(252,237,230,0.6);">or</div>
@@ -214,7 +216,7 @@ class Component extends DCLogic {
   state = {
     tab: 'cooking', selId: null, screen: 'book',
     dragId: null, dragClientY: 0, query: '', armId: null, scrolled: false,
-    paste: '', parsing: false, err: '', editIdx: -1, editVal: '', modInput: '', newIngQty: '', newIngName: '', nameEditIdx: -1, nameEditVal: '', linkEditing: false, linkInput: '',
+    paste: '', addLink: '', parsing: false, err: '', editIdx: -1, editVal: '', modInput: '', newIngQty: '', newIngName: '', nameEditIdx: -1, nameEditVal: '', linkEditing: false, linkInput: '',
     recipes: [
       { id: 1, tab: 'cooking', title: 'Shakshuka', time: '30 min', servings: 2, factor: 1,
         tags: ['weeknight', 'brunch'],
@@ -409,15 +411,18 @@ class Component extends DCLogic {
     const rec = { id, tab: p.tab === 'baking' ? 'baking' : 'cooking', title: p.title || 'Untitled recipe',
       time: p.time || '', servings: p.servings || '', factor: 1, tags: p.tags || [], img: img || null,
       ings: (p.ingredients || []).map(i => ({ q: typeof i.qty === 'number' ? i.qty : null, u: i.unit || '', n: i.name || '' })),
-      steps: p.steps || [], mods: p.modifications || [] };
-    this.setState(s => ({ recipes: [...s.recipes, rec], nextId: id + 1, tab: rec.tab, selId: id, screen: 'book', parsing: false, paste: '', err: '' }));
+      steps: p.steps || [], mods: [] };
+    // Attach the source link typed on the Add screen, if any.
+    const link = (this.state.addLink || '').trim();
+    if (link) rec.link = /^https?:\/\//i.test(link) ? link : 'https://' + link;
+    this.setState(s => ({ recipes: [...s.recipes, rec], nextId: id + 1, tab: rec.tab, selId: id, screen: 'book', parsing: false, paste: '', addLink: '', err: '' }));
   }
   async parseText() {
     const text = this.state.paste.trim();
     if (!text || this.state.parsing) return;
     this.setState({ parsing: true, err: '' });
     try {
-      const prompt = 'Parse this recipe into strict JSON, no markdown fences, no commentary. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string],"modifications":[string](1-2 sensible ingredient-swap suggestions, format "Swap X \u2192 Y ...")}. Recipe text:\n' + text;
+      const prompt = 'Parse this recipe into strict JSON, no markdown fences, no commentary. Keep the recipe in its original language — do NOT translate. Silently fix obvious typos and spelling mistakes. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string]}. Recipe text:\n' + text;
       let out = await window.claude.complete(prompt);
       out = out.replace(/```json|```/g, '').trim();
       this.addRecipe(JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1)));
@@ -467,23 +472,30 @@ class Component extends DCLogic {
       img.src = url;
     });
   }
-  async parseImage(file) {
+  async parseImage(files) {
     if (this.state.parsing) return;
+    const list = (Array.isArray(files) ? files : [files]).filter(Boolean);
+    if (!list.length) return;
     this.setState({ parsing: true, err: '' });
     try {
-      const data = await this.fileToResizedBase64(file);
-      const thumb = await this.fileToThumb(file).catch(() => null);
-      const mediaType = 'image/jpeg';
-      const prompt = 'This image shows a recipe (photo of a cookbook page, handwritten card, or social post screenshot). Read it and parse into strict JSON, no markdown fences, no commentary. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags, include "from photo"),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string],"modifications":[string](1-2 sensible ingredient-swap suggestions, format "Swap X \u2192 Y ...")}.';
-      let out = await window.claude.complete({
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data } },
-          { type: 'text', text: prompt },
-        ] }],
-        max_tokens: 4000,
-      });
+      // All selected photos are pages of ONE recipe \u2014 send them together and
+      // parse into a single recipe. The model picks which image is the thumbnail.
+      const datas = await Promise.all(list.map(f => this.fileToResizedBase64(f)));
+      const many = datas.length > 1;
+      const prompt = (many
+        ? 'These ' + datas.length + ' images are pages of ONE recipe (e.g. an ingredients page and a method page, or a multi-page cookbook spread). Read ALL of them together and combine into a single recipe. '
+        : 'This image shows a recipe (photo of a cookbook page, handwritten card, or social post screenshot). Read it and ')
+        + 'parse into strict JSON, no markdown fences, no commentary. Keep the recipe in its original language — do NOT translate. Silently fix obvious typos and OCR/spelling errors. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags, include "from photo"),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string],"thumbnailIndex":number|null}. For "thumbnailIndex": the 0-based index (in the order the images were given) of the single image that works best as a small card thumbnail \u2014 prefer a photo of the finished dish, otherwise the most appetizing/representative image; use null only if every image is just text or handwriting with no usable photo.';
+      const content = datas.map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }));
+      content.push({ type: 'text', text: prompt });
+      let out = await window.claude.complete({ messages: [{ role: 'user', content }], max_tokens: 4000 });
       out = out.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+      // Model picks the best image for the thumbnail; null = no usable photo (letter avatar).
+      const ti = parsed.thumbnailIndex;
+      const thumb = (typeof ti === 'number' && ti >= 0 && ti < list.length)
+        ? await this.fileToThumb(list[ti]).catch(() => null)
+        : null;
       this.addRecipe(parsed, thumb);
     } catch (e) {
       console.error('parseImage failed', e);
@@ -599,17 +611,19 @@ class Component extends DCLogic {
       bakeBg: tab === 'baking' ? active[0] : idle[0], bakeFg: tab === 'baking' ? active[1] : idle[1],
       countLabel: String(shown.length).padStart(3, '0') + (shown.length === 1 ? ' recipe' : ' recipes'),
       shown,
-      openAdd: () => this.setState({ screen: 'add', err: '' }),
+      openAdd: () => this.setState({ screen: 'add', err: '', addLink: '' }),
       isAdd: s.screen === 'add',
       closeAdd: () => this.setState({ screen: 'book' }),
       paste: s.paste,
       onPaste: e => this.setState({ paste: e.target.value }),
+      addLink: s.addLink,
+      onAddLink: e => this.setState({ addLink: e.target.value }),
       parseText: () => this.parseText(),
       setFileRef: el => { this.fileInputEl = el; },
       photoClick: () => this.fileInputEl && this.fileInputEl.click(),
-      photoFileChange: e => { const f = e.target.files && e.target.files[0]; if (f) this.parseImage(f); e.target.value = ''; },
+      photoFileChange: e => { const fs = e.target.files ? Array.from(e.target.files) : []; if (fs.length) this.parseImage(fs); e.target.value = ''; },
       photoDragOver: e => { e.preventDefault(); },
-      photoDrop: e => { e.preventDefault(); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) this.parseImage(f); },
+      photoDrop: e => { e.preventDefault(); const fs = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : []; if (fs.length) this.parseImage(fs); },
       parsing: s.parsing, err: s.err, hasErr: !!s.err,
       parseLabel: s.parsing ? 'Reading recipe\u2026' : "Save this recipe",
     };
