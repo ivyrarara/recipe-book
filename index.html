@@ -95,7 +95,12 @@
           <sc-if value="{{ sel.hasImg }}" hint-placeholder-val="{{ false }}">
             <img src="{{ sel.img }}" style="width: 64px; height: 64px; border-radius: 16px; object-fit: cover; flex-shrink: 0; display: block; margin-top: 4px;">
           </sc-if>
-          <div style="flex: 1; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 36px; color: #F2A9C4; line-height: 1.05;">{{ sel.title }}</div>
+          <sc-if value="{{ sel.titleEditing }}" hint-placeholder-val="{{ false }}">
+            <input value="{{ sel.titleVal }}" onChange="{{ sel.onTitleInput }}" onKeyDown="{{ sel.onTitleKey }}" onBlur="{{ sel.commitTitle }}" autofocus="{{ true }}" style="flex: 1; min-width: 0; width: 100%; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 36px; color: #F2A9C4; line-height: 1.05; background: transparent; border: none; outline: none; padding: 0; box-sizing: border-box;">
+          </sc-if>
+          <sc-if value="{{ sel.titleNotEditing }}" hint-placeholder-val="{{ true }}">
+            <div onClick="{{ sel.startTitleEdit }}" style="flex: 1; min-width: 0; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 36px; color: #F2A9C4; line-height: 1.05; cursor: pointer;">{{ sel.title }}</div>
+          </sc-if>
           <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0;">
             <div onClick="{{ sel.linkClick }}" style="cursor: pointer; color: {{ sel.linkColor }}; padding: 4px; display: flex; align-items: center;"><svg viewBox="0 0 24 24" width="17.8" height="17.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
             <sc-if value="{{ sel.hasLink }}" hint-placeholder-val="{{ false }}">
@@ -182,10 +187,21 @@
         <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 34px; color: #F2A9C4; line-height: 1.1; margin-top: 10px;">Add a recipe</div>
         <div style="font-size: 13px; color: rgba(252,237,230,0.7); margin-top: 8px; line-height: 1.5;">Paste any recipe text &mdash; a screenshot caption, a message from mom, a blog wall-of-text. I&rsquo;ll fill in the ingredients and how-to.</div>
         <div onClick="{{ photoClick }}" onDragOver="{{ photoDragOver }}" onDrop="{{ photoDrop }}" style="position: relative; border-radius: 16px; padding: 26px 18px; text-align: center; cursor: pointer; margin-top: 18px; background: #480009; border: 2px dotted rgba(242,169,196,0.75);">
-          <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; color: #F2A9C4;">Snap or drop a photo</div>
-          <div style="font-size: 12px; color: rgba(252,237,230,0.6); margin-top: 6px;">of a cookbook page or handwritten card &middot; add several for a multi-page recipe</div>
+          <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; color: #F2A9C4;">Snap or add a photo</div>
+          <div style="font-size: 12px; color: rgba(252,237,230,0.6); margin-top: 6px;">cookbook page or handwritten card &middot; tap again to add each page of a multi-page recipe</div>
           <input ref="{{ setFileRef }}" type="file" accept="image/*" multiple="{{ true }}" onChange="{{ photoFileChange }}" style="display: none;">
         </div>
+        <sc-if value="{{ hasPending }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+            <sc-for list="{{ pendingPhotos }}" as="ph" hint-placeholder-count="1">
+              <div style="position: relative; width: 56px; height: 56px; flex-shrink: 0;">
+                <img src="{{ ph.url }}" style="width: 56px; height: 56px; border-radius: 10px; object-fit: cover; display: block;">
+                <div onClick="{{ ph.remove }}" style="position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 999px; background: #550010; border: 1px solid rgba(242,169,196,0.5); color: #FCEDE6; font-size: 13px; line-height: 18px; text-align: center; cursor: pointer;">&times;</div>
+              </div>
+            </sc-for>
+          </div>
+          <button onClick="{{ parsePending }}" style="width: 100%; margin-top: 12px; padding: 13px 0; border-radius: 999px; border: none; background: #C4342B; color: #FCEDE6; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; cursor: pointer;">{{ parsePendingLabel }}</button>
+        </sc-if>
         <input value="{{ addLink }}" onChange="{{ onAddLink }}" class="link-ph" placeholder="Paste a source link (optional)" style="width: 100%; margin-top: 12px; padding: 11px 14px; border: none; border-radius: 8px; background: #3D000B; color: #FCEDE6; font-size: 13px; outline: none; box-sizing: border-box;">
         <div style="display: flex; align-items: center; gap: 10px; margin: 24px 0 16px;">
           <div style="flex: 1; height: 0.6px; background: rgba(242,169,196,0.4);"></div>
@@ -216,7 +232,7 @@ class Component extends DCLogic {
   state = {
     tab: 'cooking', selId: null, screen: 'book',
     dragId: null, dragClientY: 0, query: '', armId: null, scrolled: false,
-    paste: '', addLink: '', parsing: false, err: '', editIdx: -1, editVal: '', modInput: '', newIngQty: '', newIngName: '', nameEditIdx: -1, nameEditVal: '', linkEditing: false, linkInput: '',
+    paste: '', addLink: '', pendingPhotos: [], parsing: false, err: '', editIdx: -1, editVal: '', modInput: '', newIngQty: '', newIngName: '', nameEditIdx: -1, nameEditVal: '', titleEditing: false, titleVal: '', linkEditing: false, linkInput: '',
     recipes: [
       { id: 1, tab: 'cooking', title: 'Shakshuka', time: '30 min', servings: 2, factor: 1,
         tags: ['weeknight', 'brunch'],
@@ -415,14 +431,15 @@ class Component extends DCLogic {
     // Attach the source link typed on the Add screen, if any.
     const link = (this.state.addLink || '').trim();
     if (link) rec.link = /^https?:\/\//i.test(link) ? link : 'https://' + link;
-    this.setState(s => ({ recipes: [...s.recipes, rec], nextId: id + 1, tab: rec.tab, selId: id, screen: 'book', parsing: false, paste: '', addLink: '', err: '' }));
+    this.clearPending();
+    this.setState(s => ({ recipes: [...s.recipes, rec], nextId: id + 1, tab: rec.tab, selId: id, screen: 'book', parsing: false, paste: '', addLink: '', pendingPhotos: [], err: '' }));
   }
   async parseText() {
     const text = this.state.paste.trim();
     if (!text || this.state.parsing) return;
     this.setState({ parsing: true, err: '' });
     try {
-      const prompt = 'Parse this recipe into strict JSON, no markdown fences, no commentary. Keep the recipe in its original language — do NOT translate. Silently fix obvious typos and spelling mistakes. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string]}. Recipe text:\n' + text;
+      const prompt = 'Parse this recipe into strict JSON, no markdown fences, no commentary. LANGUAGE: write every field value (title, tags, ingredient names, units, steps) in the SAME language as the source recipe — if it is Korean keep it Korean, if Chinese keep Chinese, etc. NEVER translate to English or any other language. Only silently fix obvious typos and spelling mistakes. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string]}. Recipe text:\n' + text;
       let out = await window.claude.complete(prompt);
       out = out.replace(/```json|```/g, '').trim();
       this.addRecipe(JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1)));
@@ -472,6 +489,18 @@ class Component extends DCLogic {
       img.src = url;
     });
   }
+  addPhotos(files) {
+    const added = files.map(f => ({ file: f, url: URL.createObjectURL(f) }));
+    this.setState({ pendingPhotos: [...this.state.pendingPhotos, ...added] });
+  }
+  removePendingPhoto(i) {
+    const p = this.state.pendingPhotos[i];
+    if (p) { try { URL.revokeObjectURL(p.url); } catch (e) {} }
+    this.setState({ pendingPhotos: this.state.pendingPhotos.filter((_, idx) => idx !== i) });
+  }
+  clearPending() {
+    this.state.pendingPhotos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) {} });
+  }
   async parseImage(files) {
     if (this.state.parsing) return;
     const list = (Array.isArray(files) ? files : [files]).filter(Boolean);
@@ -485,7 +514,7 @@ class Component extends DCLogic {
       const prompt = (many
         ? 'These ' + datas.length + ' images are pages of ONE recipe (e.g. an ingredients page and a method page, or a multi-page cookbook spread). Read ALL of them together and combine into a single recipe. '
         : 'This image shows a recipe (photo of a cookbook page, handwritten card, or social post screenshot). Read it and ')
-        + 'parse into strict JSON, no markdown fences, no commentary. Keep the recipe in its original language — do NOT translate. Silently fix obvious typos and OCR/spelling errors. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags, include "from photo"),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string],"thumbnailIndex":number|null}. For "thumbnailIndex": the 0-based index (in the order the images were given) of the single image that works best as a small card thumbnail \u2014 prefer a photo of the finished dish, otherwise the most appetizing/representative image; use null only if every image is just text or handwriting with no usable photo.';
+        + 'parse into strict JSON, no markdown fences, no commentary. LANGUAGE: write every field value (title, tags, ingredient names, units, steps) in the SAME language as the recipe shown — if it is Korean keep it Korean, if Chinese keep Chinese, etc. NEVER translate to English or any other language. Only silently fix obvious typos and OCR errors. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string],"thumbnailIndex":number|null}. For "thumbnailIndex": the 0-based index (in the order the images were given) of the single image that works best as a small card thumbnail \u2014 prefer a photo of the finished dish, otherwise the most appetizing/representative image; use null only if every image is just text or handwriting with no usable photo.';
       const content = datas.map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }));
       content.push({ type: 'text', text: prompt });
       let out = await window.claude.complete({ messages: [{ role: 'user', content }], max_tokens: 4000 });
@@ -549,7 +578,7 @@ class Component extends DCLogic {
         id: r.id, title: r.title, initial: r.title[0],
         img: r.img || '', hasImg: !!r.img, noImg: !r.img,
         meta: [r.time, r.ings.length + ' ingredients', ...r.tags].filter(Boolean).join(' \u00B7 '),
-        open: () => { if (!this.dragMoved) this.setState({ selId: r.id, editIdx: -1 }); },
+        open: () => { if (!this.dragMoved) this.setState({ selId: r.id, editIdx: -1, titleEditing: false }); },
         // Stop the row's press/drag from arming when tapping the delete button.
         stopDown: e => { if (e && e.stopPropagation) e.stopPropagation(); },
         removeRecipe: e => {
@@ -611,9 +640,13 @@ class Component extends DCLogic {
       bakeBg: tab === 'baking' ? active[0] : idle[0], bakeFg: tab === 'baking' ? active[1] : idle[1],
       countLabel: String(shown.length).padStart(3, '0') + (shown.length === 1 ? ' recipe' : ' recipes'),
       shown,
-      openAdd: () => this.setState({ screen: 'add', err: '', addLink: '' }),
+      openAdd: () => { this.clearPending(); this.setState({ screen: 'add', err: '', addLink: '', pendingPhotos: [] }); },
+      hasPending: s.pendingPhotos.length > 0,
+      pendingPhotos: s.pendingPhotos.map((p, i) => ({ url: p.url, remove: () => this.removePendingPhoto(i) })),
+      parsePending: () => { if (s.pendingPhotos.length) this.parseImage(s.pendingPhotos.map(p => p.file)); },
+      parsePendingLabel: s.parsing ? 'Reading…' : ('Read ' + s.pendingPhotos.length + (s.pendingPhotos.length > 1 ? ' photos' : ' photo') + ' → recipe'),
       isAdd: s.screen === 'add',
-      closeAdd: () => this.setState({ screen: 'book' }),
+      closeAdd: () => { this.clearPending(); this.setState({ screen: 'book', pendingPhotos: [] }); },
       paste: s.paste,
       onPaste: e => this.setState({ paste: e.target.value }),
       addLink: s.addLink,
@@ -621,9 +654,9 @@ class Component extends DCLogic {
       parseText: () => this.parseText(),
       setFileRef: el => { this.fileInputEl = el; },
       photoClick: () => this.fileInputEl && this.fileInputEl.click(),
-      photoFileChange: e => { const fs = e.target.files ? Array.from(e.target.files) : []; if (fs.length) this.parseImage(fs); e.target.value = ''; },
+      photoFileChange: e => { const fs = e.target.files ? Array.from(e.target.files) : []; if (fs.length) this.addPhotos(fs); e.target.value = ''; },
       photoDragOver: e => { e.preventDefault(); },
-      photoDrop: e => { e.preventDefault(); const fs = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : []; if (fs.length) this.parseImage(fs); },
+      photoDrop: e => { e.preventDefault(); const fs = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : []; if (fs.length) this.addPhotos(fs); },
       parsing: s.parsing, err: s.err, hasErr: !!s.err,
       parseLabel: s.parsing ? 'Reading recipe\u2026' : "Save this recipe",
     };
@@ -633,6 +666,15 @@ class Component extends DCLogic {
       const f = r.factor || 1;
       vals.sel = {
         title: r.title, img: r.img || '', hasImg: !!r.img,
+        titleEditing: s.titleEditing, titleNotEditing: !s.titleEditing, titleVal: s.titleVal,
+        startTitleEdit: () => this.setState({ titleEditing: true, titleVal: r.title }),
+        onTitleInput: e => this.setState({ titleVal: e.target.value }),
+        onTitleKey: e => { if (e.key === 'Enter') e.target.blur(); },
+        commitTitle: () => {
+          const v = (this.state.titleVal || '').trim();
+          if (v) { r.title = v; this.setState({ titleEditing: false, titleVal: '', recipes: [...this.state.recipes] }); }
+          else this.setState({ titleEditing: false, titleVal: '' });
+        },
         tags: r.tags.map(t => ({ t })),
         showFactor: Math.abs(f - 1) > 0.001,
         factorLabel: 'scaled \u00D7' + this.fmt(f),
@@ -688,7 +730,7 @@ class Component extends DCLogic {
       vals.onNewIngKey = e => { if (e.key === 'Enter') e.target.blur(); };
       vals.addIngredient = () => this.addIngredient();
     }
-    vals.close = () => this.setState({ selId: null, editIdx: -1 });
+    vals.close = () => this.setState({ selId: null, editIdx: -1, titleEditing: false });
     vals.editVal = s.editVal;
     vals.onEditChange = e => this.setState({ editVal: e.target.value });
     vals.onEditKey = e => { if (e.key === 'Enter') this.commitEdit(); };
