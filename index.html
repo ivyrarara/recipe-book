@@ -67,7 +67,12 @@
       <div style="display: flex; flex-direction: column; gap: 12px;">
         <sc-for list="{{ shown }}" as="r" hint-placeholder-count="3">
           <div ref="{{ r.setRef }}" onClick="{{ r.open }}" onPointerDown="{{ r.pressStart }}" onPointerUp="{{ r.pressCancel }}" onPointerCancel="{{ r.pressCancel }}" style="{{ r.rowStyle }}">
-            <div style="width: 58px; height: 58px; border-radius: 14px; background: #C4342B; color: #FCEDE6; display: flex; align-items: center; justify-content: center; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 30px; flex-shrink: 0;">{{ r.initial }}</div>
+            <sc-if value="{{ r.hasImg }}" hint-placeholder-val="{{ false }}">
+              <img src="{{ r.img }}" style="width: 58px; height: 58px; border-radius: 14px; object-fit: cover; flex-shrink: 0; display: block;">
+            </sc-if>
+            <sc-if value="{{ r.noImg }}" hint-placeholder-val="{{ true }}">
+              <div style="width: 58px; height: 58px; border-radius: 14px; background: #C4342B; color: #FCEDE6; display: flex; align-items: center; justify-content: center; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 30px; flex-shrink: 0;">{{ r.initial }}</div>
+            </sc-if>
             <div style="flex: 1; min-width: 0;">
               <div style="font-family: 'Instrument Serif', serif; font-size: 20px; color: #FCEDE6;">{{ r.title }}</div>
               <div style="font-size: 12px; color: rgba(252,237,230,0.6); margin-top: 3px;">{{ r.meta }}</div>
@@ -85,7 +90,10 @@
     <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
       <div style="position: absolute; inset: 0; z-index: 20; background: #550010; overflow-y: auto; padding: 10px 22px 60px; box-sizing: border-box;">
         <button onClick="{{ close }}" style="background: none; border: none; color: #F2A9C4; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; cursor: pointer; padding: 8px 0;">&larr; back to the book</button>
-        <div style="display: flex; align-items: flex-start; gap: 10px; margin-top: 18px;">
+        <div style="display: flex; align-items: flex-start; gap: 12px; margin-top: 18px;">
+          <sc-if value="{{ sel.hasImg }}" hint-placeholder-val="{{ false }}">
+            <img src="{{ sel.img }}" style="width: 64px; height: 64px; border-radius: 16px; object-fit: cover; flex-shrink: 0; display: block; margin-top: 4px;">
+          </sc-if>
           <div style="flex: 1; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 36px; color: #F2A9C4; line-height: 1.05;">{{ sel.title }}</div>
           <div onClick="{{ sel.linkClick }}" style="cursor: pointer; color: {{ sel.linkColor }}; font-size: 22px; padding: 4px; flex-shrink: 0;">&#128279;</div>
         </div>
@@ -391,10 +399,10 @@ class Component extends DCLogic {
     }
     this.setState({ dragId: null, dragClientY: 0 });
   }
-  addRecipe(p) {
+  addRecipe(p, img) {
     const id = this.state.nextId;
     const rec = { id, tab: p.tab === 'baking' ? 'baking' : 'cooking', title: p.title || 'Untitled recipe',
-      time: p.time || '', servings: p.servings || '', factor: 1, tags: p.tags || [],
+      time: p.time || '', servings: p.servings || '', factor: 1, tags: p.tags || [], img: img || null,
       ings: (p.ingredients || []).map(i => ({ q: typeof i.qty === 'number' ? i.qty : null, u: i.unit || '', n: i.name || '' })),
       steps: p.steps || [], mods: p.modifications || [] };
     this.setState(s => ({ recipes: [...s.recipes, rec], nextId: id + 1, tab: rec.tab, selId: id, screen: 'book', parsing: false, paste: '', err: '' }));
@@ -433,11 +441,33 @@ class Component extends DCLogic {
       img.src = url;
     });
   }
+  // Small thumbnail (full data URL) from the uploaded photo, used as the recipe
+  // card/detail image. Kept tiny so many photos fit in localStorage.
+  fileToThumb(file, size) {
+    size = size || 220;
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, size / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
   async parseImage(file) {
     if (this.state.parsing) return;
     this.setState({ parsing: true, err: '' });
     try {
       const data = await this.fileToResizedBase64(file);
+      const thumb = await this.fileToThumb(file).catch(() => null);
       const mediaType = 'image/jpeg';
       const prompt = 'This image shows a recipe (photo of a cookbook page, handwritten card, or social post screenshot). Read it and parse into strict JSON, no markdown fences, no commentary. Schema: {"title":string,"tab":"cooking"|"baking","tags":[string](2 short lowercase tags, include "from photo"),"time":string,"servings":number,"ingredients":[{"qty":number|null,"unit":string,"name":string}],"steps":[string],"modifications":[string](1-2 sensible ingredient-swap suggestions, format "Swap X \u2192 Y ...")}.';
       let out = await window.claude.complete({
@@ -449,7 +479,7 @@ class Component extends DCLogic {
       });
       out = out.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
-      this.addRecipe(parsed);
+      this.addRecipe(parsed, thumb);
     } catch (e) {
       console.error('parseImage failed', e);
       this.setState({ parsing: false, err: 'Could not read that photo as a recipe \u2014 try a clearer shot. (' + (e && e.message ? e.message : e) + ')' });
@@ -489,6 +519,7 @@ class Component extends DCLogic {
       }
       return {
         id: r.id, title: r.title, initial: r.title[0],
+        img: r.img || '', hasImg: !!r.img, noImg: !r.img,
         meta: [r.time, r.ings.length + ' ingredients', ...r.tags].filter(Boolean).join(' \u00B7 '),
         open: () => { if (!this.dragMoved) this.setState({ selId: r.id, editIdx: -1 }); },
         setRef: el => { this.rowRefs[r.id] = el; },
@@ -561,7 +592,7 @@ class Component extends DCLogic {
     if (r) {
       const f = r.factor || 1;
       vals.sel = {
-        title: r.title,
+        title: r.title, img: r.img || '', hasImg: !!r.img,
         tags: r.tags.map(t => ({ t })),
         showFactor: Math.abs(f - 1) > 0.001,
         factorLabel: 'scaled \u00D7' + this.fmt(f),
