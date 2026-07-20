@@ -65,7 +65,7 @@
     </div>
     <div style="position: relative; height: 18px; margin-top: -18px; z-index: 6; box-shadow: 0 14px 18px -4px rgba(0,0,0,0.7); pointer-events: none; opacity: {{ scrolledShadow }}; transition: opacity 0.2s;"></div>
     <div ref="{{ setListRef }}" onScroll="{{ onListScroll }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 22px 22px 210px; box-sizing: border-box;">
-      <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
         <sc-for list="{{ shown }}" as="r" hint-placeholder-count="3">
           <div ref="{{ r.setRef }}" onClick="{{ r.open }}" onPointerDown="{{ r.pressStart }}" onPointerUp="{{ r.pressCancel }}" onPointerCancel="{{ r.pressCancel }}" style="{{ r.rowStyle }}">
             <sc-if value="{{ r.hasImg }}" hint-placeholder-val="{{ false }}">
@@ -210,7 +210,7 @@
           <div style="font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: rgba(252,237,230,0.6);">or</div>
           <div style="flex: 1; height: 0.6px; background: rgba(242,169,196,0.4);"></div>
         </div>
-        <textarea value="{{ paste }}" onChange="{{ onPaste }}" placeholder="Paste recipe text here&hellip;" style="width: 100%; height: 190px; padding: 14px; border-radius: 16px; border: 1.5px solid rgba(242,169,196,0.5); background: #3D000B; color: #A8324B; font-size: 14px; line-height: 1.5; resize: none; outline: none; box-sizing: border-box;"></textarea>
+        <textarea value="{{ paste }}" onChange="{{ onPaste }}" placeholder="Paste recipe text here&hellip;" style="width: 100%; height: 130px; padding: 14px; border-radius: 16px; border: 1.5px solid rgba(242,169,196,0.5); background: #3D000B; color: #A8324B; font-size: 14px; line-height: 1.5; resize: none; outline: none; box-sizing: border-box;"></textarea>
         <button onClick="{{ parseText }}" style="width: 100%; margin-top: 12px; padding: 15px 0; border-radius: 999px; border: none; background: #C4342B; color: #FCEDE6; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; cursor: pointer;">{{ parseLabel }}</button>
         <sc-if value="{{ hasErr }}" hint-placeholder-val="{{ false }}">
           <div style="margin-top: 10px; font-size: 13px; color: #F2A9C4; font-style: italic;">{{ err }}</div>
