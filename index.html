@@ -95,7 +95,7 @@
             <img src="{{ sel.img }}" style="width: 64px; height: 64px; border-radius: 16px; object-fit: cover; flex-shrink: 0; display: block; margin-top: 4px;">
           </sc-if>
           <div style="flex: 1; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 36px; color: #F2A9C4; line-height: 1.05;">{{ sel.title }}</div>
-          <div onClick="{{ sel.linkClick }}" style="cursor: pointer; color: {{ sel.linkColor }}; font-size: 19.8px; padding: 4px; flex-shrink: 0;">&#128279;</div>
+          <div onClick="{{ sel.linkClick }}" style="cursor: pointer; color: {{ sel.linkColor }}; padding: 4px; flex-shrink: 0; display: flex; align-items: center;"><svg viewBox="0 0 24 24" width="17.8" height="17.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
         </div>
         <sc-if value="{{ sel.linkEditing }}" hint-placeholder-val="{{ false }}">
           <input value="{{ sel.linkInput }}" onChange="{{ sel.onLinkInput }}" onKeyDown="{{ sel.onLinkKey }}" onBlur="{{ sel.commitLink }}" autofocus="{{ true }}" placeholder="Paste a URL&hellip;" style="width: 100%; margin-top: 8px; padding: 8px 12px; border: 1.5px solid rgba(242,169,196,0.4); border-radius: 10px; background: rgba(0,0,0,0.2); color: #FCEDE6; font-size: 13px; outline: none; box-sizing: border-box;">
@@ -526,6 +526,7 @@ class Component extends DCLogic {
         stopDown: e => { if (e && e.stopPropagation) e.stopPropagation(); },
         removeRecipe: e => {
           if (e && e.stopPropagation) e.stopPropagation();
+          if (!window.confirm('Delete “' + r.title + '”? This can’t be undone.')) return;
           this.setState({
             recipes: this.state.recipes.filter(x => x.id !== r.id),
             selId: this.state.selId === r.id ? null : this.state.selId,
@@ -628,7 +629,7 @@ class Component extends DCLogic {
           };
         }),
         resetFactor: () => { r.factor = 1; this.setState({ recipes: [...s.recipes] }); },
-        linkColor: r.link ? '#C4342B' : 'rgba(252,237,230,0.35)',
+        linkColor: r.link ? '#F2A9C4' : 'rgba(252,237,230,0.35)',
         linkEditing: s.linkEditing,
         linkInput: s.linkInput,
         linkClick: () => {
