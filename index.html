@@ -77,7 +77,7 @@
               <div style="font-family: 'Instrument Serif', serif; font-size: 20px; color: #FCEDE6;">{{ r.title }}</div>
               <div style="font-size: 12px; color: rgba(252,237,230,0.6); margin-top: 3px;">{{ r.meta }}</div>
             </div>
-            <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; color: #F2A9C4;">&rarr;</div>
+            <div onClick="{{ r.removeRecipe }}" onPointerDown="{{ r.stopDown }}" style="cursor: pointer; color: rgba(252,237,230,0.5); font-size: 22px; padding: 2px 6px; flex-shrink: 0;">&times;</div>
           </div>
         </sc-for>
       </div>
@@ -522,6 +522,15 @@ class Component extends DCLogic {
         img: r.img || '', hasImg: !!r.img, noImg: !r.img,
         meta: [r.time, r.ings.length + ' ingredients', ...r.tags].filter(Boolean).join(' \u00B7 '),
         open: () => { if (!this.dragMoved) this.setState({ selId: r.id, editIdx: -1 }); },
+        // Stop the row's press/drag from arming when tapping the delete button.
+        stopDown: e => { if (e && e.stopPropagation) e.stopPropagation(); },
+        removeRecipe: e => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          this.setState({
+            recipes: this.state.recipes.filter(x => x.id !== r.id),
+            selId: this.state.selId === r.id ? null : this.state.selId,
+          });
+        },
         setRef: el => { this.rowRefs[r.id] = el; },
         pressStart: e => {
           clearTimeout(this._pressTimer);
