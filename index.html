@@ -686,7 +686,7 @@ class Component extends DCLogic {
         meta: [r.time, ...r.tags].filter(Boolean).join(' \u00B7 '),
         open: () => { if (!this.dragMoved) this.setState({ selId: r.id, justAdded: false, editIdx: -1, titleEditing: false }); },
         // Stop the row's press/drag from arming when tapping the delete button.
-        stopDown: e => { if (e && e.stopPropagation) e.stopPropagation(); this._haltScroll(); },
+        stopDown: e => { if (e && e.stopPropagation) e.stopPropagation(); this._pressing = false; this._haltScroll(); },
         favFill: r.fav ? 'rgba(242,169,196,0.7)' : 'none',
         favStroke: r.fav ? 'rgba(242,169,196,0.7)' : 'rgba(252,237,230,0.2)',
         toggleFav: e => {
@@ -707,6 +707,7 @@ class Component extends DCLogic {
           clearTimeout(this._pressTimer);
           if (this._momentum) { cancelAnimationFrame(this._momentum); this._momentum = null; }
           if (this._bounceTimer) { clearTimeout(this._bounceTimer); this._bounceTimer = null; }
+          this._pressing = true;
           this._vy = 0; this._lastMoveT = null; this._lastMoveClientY = e.clientY;
           this._liveY = e.clientY;
           this._startY = e.clientY;
@@ -718,6 +719,7 @@ class Component extends DCLogic {
           this.setState({ armId: r.id });
           if (!this._armedMove) {
             this._armedMove = ev => {
+              if (!this._pressing) return; // ignore stray moves when no row press is active (e.g. tapping a star)
               this._liveY = ev.clientY;
               if (this.state.dragId) { this.setState({ dragClientY: ev.clientY }); this.maybeSwap(ev.clientY); return; }
               if (!this._scrolling) {
@@ -752,6 +754,7 @@ class Component extends DCLogic {
         },
         pressCancel: () => {
           clearTimeout(this._pressTimer);
+          this._pressing = false;
           if (this._overs) this._springBack();
           else if (this._scrolling) this._startMomentum();
           if (!this.state.dragId) this.setState({ armId: null });
