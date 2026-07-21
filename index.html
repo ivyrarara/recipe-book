@@ -128,7 +128,9 @@
     <!-- ══ DETAIL ══ -->
     <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
       <div style="position: absolute; inset: 0; z-index: 20; background: #550010; overflow-y: auto; padding: 10px 22px 60px; box-sizing: border-box;">
-        <button onClick="{{ close }}" style="background: none; border: none; color: #F2A9C4; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; cursor: pointer; padding: 8px 0;">&larr; back to the book</button>
+        <sc-if value="{{ notJustAdded }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ close }}" style="background: none; border: none; color: #F2A9C4; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; cursor: pointer; padding: 8px 0;">&larr; back to the list</button>
+        </sc-if>
         <div style="display: flex; align-items: flex-start; gap: 12px; margin-top: 18px;">
           <sc-if value="{{ sel.hasImg }}" hint-placeholder-val="{{ false }}">
             <img src="{{ sel.img }}" style="width: 64px; height: 64px; border-radius: 16px; object-fit: cover; flex-shrink: 0; display: block; margin-top: 4px;">
@@ -215,6 +217,9 @@
         <div style="display: flex; gap: 8px; margin-top: 12px;">
           <input value="{{ modInput }}" onChange="{{ onModInput }}" onKeyDown="{{ onModKey }}" onBlur="{{ addMod }}" placeholder="Add your own tweak, e.g. swap butter &rarr; oil" style="flex: 1; padding: 11px 14px; border: none; border-radius: 8px; background: rgba(0,0,0,0.2); color: #FCEDE6; font-size: 13px; outline: none; box-sizing: border-box;">
         </div>
+        <sc-if value="{{ justAdded }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ done }}" style="width: 100%; margin-top: 34px; padding: 15px 0; border-radius: 999px; border: none; background: #C4342B; color: #FCEDE6; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; cursor: pointer;">Done</button>
+        </sc-if>
       </div>
     </sc-if>
 
@@ -266,7 +271,7 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 500, &quot;height&quot;: 980}}">
 class Component extends DCLogic {
   state = {
-    tab: 'cooking', selId: null, screen: 'book',
+    tab: 'cooking', selId: null, screen: 'book', justAdded: false,
     dragId: null, dragClientY: 0, query: '', armId: null, scrolled: false,
     paste: '', addLink: '', pendingPhotos: [], parsing: false, err: '', editIdx: -1, editVal: '', modInput: '', newIngQty: '', newIngName: '', nameEditIdx: -1, nameEditVal: '', titleEditing: false, titleVal: '', linkEditing: false, linkInput: '',
     recipes: [
@@ -352,6 +357,40 @@ class Component extends DCLogic {
       inner.style.transform = 'translateY(0)';
       this._overs = false;
     }
+  }
+  // After releasing a scroll, let the list keep gliding and decelerate (inertia).
+  _startMomentum() {
+    const list = this.listRef;
+    if (!list) return;
+    // Ignore stale velocity if the finger paused before lifting.
+    if (this._lastMoveT == null || performance.now() - this._lastMoveT > 90) return;
+    let v = this._vy || 0;
+    if (Math.abs(v) < 0.04) return;
+    const max = list.scrollHeight - list.clientHeight;
+    let last = performance.now();
+    const step = t => {
+      const dt = Math.min(t - last, 32); last = t;
+      v *= Math.pow(0.9965, dt); // friction per ms
+      let top = list.scrollTop + v * dt;
+      if (top <= 0) { list.scrollTop = 0; this._edgeBounce(v, 1); this._momentum = null; return; }
+      if (top >= max) { list.scrollTop = max; this._edgeBounce(v, -1); this._momentum = null; return; }
+      list.scrollTop = top;
+      if (Math.abs(v) > 0.02) this._momentum = requestAnimationFrame(step);
+      else this._momentum = null;
+    };
+    this._momentum = requestAnimationFrame(step);
+  }
+  // Soft bounce when a glide runs into the top/bottom edge.
+  _edgeBounce(v, dir) {
+    const inner = this.innerRef;
+    if (!inner) return;
+    const over = Math.min(Math.abs(v) * 22, 70) * dir;
+    if (Math.abs(over) < 3) return;
+    inner.style.transition = 'transform 0.16s cubic-bezier(0.2,0.7,0.3,1)';
+    inner.style.transform = 'translateY(' + over + 'px)';
+    this._overs = true;
+    if (this._bounceTimer) clearTimeout(this._bounceTimer);
+    this._bounceTimer = setTimeout(() => this._springBack(), 170);
   }
   persist() {
     if (this.state.recipes === this._savedRef) return; // recipes unchanged since last save
@@ -479,7 +518,7 @@ class Component extends DCLogic {
     const link = (this.state.addLink || '').trim();
     if (link) rec.link = /^https?:\/\//i.test(link) ? link : 'https://' + link;
     this.clearPending();
-    this.setState(s => ({ recipes: [...s.recipes, rec], nextId: id + 1, tab: rec.tab, selId: id, screen: 'book', parsing: false, paste: '', addLink: '', pendingPhotos: [], err: '' }));
+    this.setState(s => ({ recipes: [...s.recipes, rec], nextId: id + 1, tab: rec.tab, selId: id, justAdded: true, screen: 'book', parsing: false, paste: '', addLink: '', pendingPhotos: [], err: '' }));
   }
   async parseText() {
     if (this.state.parsing) return;
@@ -628,7 +667,7 @@ class Component extends DCLogic {
         id: r.id, title: r.title, initial: r.title[0],
         img: r.img || '', hasImg: !!r.img, noImg: !r.img,
         meta: [r.time, ...r.tags].filter(Boolean).join(' \u00B7 '),
-        open: () => { if (!this.dragMoved) this.setState({ selId: r.id, editIdx: -1, titleEditing: false }); },
+        open: () => { if (!this.dragMoved) this.setState({ selId: r.id, justAdded: false, editIdx: -1, titleEditing: false }); },
         // Stop the row's press/drag from arming when tapping the delete button.
         stopDown: e => { if (e && e.stopPropagation) e.stopPropagation(); },
         favFill: r.fav ? 'rgba(242,169,196,0.7)' : 'none',
@@ -649,6 +688,9 @@ class Component extends DCLogic {
         setRef: el => { this.rowRefs[r.id] = el; },
         pressStart: e => {
           clearTimeout(this._pressTimer);
+          if (this._momentum) { cancelAnimationFrame(this._momentum); this._momentum = null; }
+          if (this._bounceTimer) { clearTimeout(this._bounceTimer); this._bounceTimer = null; }
+          this._vy = 0; this._lastMoveT = null; this._lastMoveClientY = e.clientY;
           this._liveY = e.clientY;
           this._startY = e.clientY;
           this._scrollStartTop = this.listRef ? this.listRef.scrollTop : 0;
@@ -669,6 +711,9 @@ class Component extends DCLogic {
                 }
               }
               if (this._scrolling && this.listRef) {
+                const now = performance.now();
+                if (this._lastMoveT != null) { const dt = now - this._lastMoveT; if (dt > 0) this._vy = (this._lastMoveClientY - ev.clientY) / dt; }
+                this._lastMoveT = now; this._lastMoveClientY = ev.clientY;
                 const desired = this._scrollStartTop - (ev.clientY - this._startY);
                 const max = this.listRef.scrollHeight - this.listRef.clientHeight;
                 const inner = this.innerRef;
@@ -688,7 +733,12 @@ class Component extends DCLogic {
           }
           this._pressTimer = setTimeout(() => this.beginDrag(r.id, this._liveY), 420);
         },
-        pressCancel: () => { clearTimeout(this._pressTimer); this._springBack(); if (!this.state.dragId) this.setState({ armId: null }); },
+        pressCancel: () => {
+          clearTimeout(this._pressTimer);
+          if (this._overs) this._springBack();
+          else if (this._scrolling) this._startMomentum();
+          if (!this.state.dragId) this.setState({ armId: null });
+        },
         rowStyle: {
           display: 'flex', gap: 14, alignItems: 'center', background: '#3D000B', borderRadius: 18, padding: 14,
           cursor: 'pointer', position: 'relative', zIndex: isDragging ? 5 : 1,
@@ -703,7 +753,13 @@ class Component extends DCLogic {
     const vals = {
       pickCooking: () => this.setState({ tab: 'cooking' }),
       pickBaking: () => this.setState({ tab: 'baking' }),
-      query: s.query, onQuery: e => this.setState({ query: e.target.value }),
+      query: s.query,
+      onQuery: e => {
+        this.setState({ query: e.target.value });
+        // Jump the list back to the top so matches are visible right away.
+        if (this.listRef) this.listRef.scrollTop = 0;
+        if (this.innerRef) { this.innerRef.style.transition = 'none'; this.innerRef.style.transform = 'translateY(0)'; this._overs = false; }
+      },
       hasQuery: !!s.query, clearQuery: () => this.setState({ query: '' }),
       setListRef: el => { this.listRef = el; },
       setInnerRef: el => { this.innerRef = el; },
@@ -802,7 +858,10 @@ class Component extends DCLogic {
       vals.onNewIngKey = e => { if (e.key === 'Enter') e.target.blur(); };
       vals.addIngredient = () => this.addIngredient();
     }
-    vals.close = () => this.setState({ selId: null, editIdx: -1, titleEditing: false });
+    vals.close = () => this.setState({ selId: null, justAdded: false, editIdx: -1, titleEditing: false });
+    vals.done = () => this.setState({ selId: null, justAdded: false, editIdx: -1, titleEditing: false });
+    vals.justAdded = !!s.justAdded;
+    vals.notJustAdded = !s.justAdded;
     vals.editVal = s.editVal;
     vals.onEditChange = e => this.setState({ editVal: e.target.value });
     vals.onEditKey = e => { if (e.key === 'Enter') this.commitEdit(); };
