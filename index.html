@@ -369,6 +369,36 @@ class Component extends DCLogic {
       }
     } catch (e) { /* ignore unreadable/blocked storage */ }
   }
+  // Normalize text for searching: lowercase, strip spaces, and fold common
+  // ambiguous Korean spellings so variants match each other (스프/수프 etc.).
+  // Each group's first entry is the canonical form every variant maps to.
+  static SEARCH_VARIANTS = [
+    ['스프', '수프'],
+    ['케이크', '케잌', '케익', '케이끄'],
+    ['초콜릿', '초콜렛', '쵸콜릿', '초코렛', '초코릿'],
+    ['요구르트', '요거트', '요구르뜨'],
+    ['소시지', '소세지'],
+    ['도넛', '도너츠', '도너스', '도넛츠', '도나쓰'],
+    ['카레', '커리'],
+    ['캐러멜', '카라멜', '캬라멜'],
+    ['크루아상', '크로와상', '크라상', '크롸상'],
+    ['파르페', '파페'],
+    ['부리토', '부리또'],
+    ['타코', '타꼬'],
+    ['치즈케이크', '치즈케잌', '치즈케익'],
+    ['판나코타', '판나코따', '파나코타'],
+    ['마카롱', '마까롱'],
+    ['라자냐', '라자니아', '라쟈냐'],
+    ['뇨끼', '뇨키', '노끼'],
+  ];
+  _normSearch(str) {
+    let t = String(str || '').toLowerCase().replace(/\s+/g, '');
+    for (const group of Component.SEARCH_VARIANTS) {
+      const canon = group[0];
+      for (let i = 1; i < group.length; i++) t = t.split(group[i]).join(canon);
+    }
+    return t;
+  }
   // Group favorites to the top, preserving relative order within each group
   // (stable sort) so drag-reorder positions stay consistent.
   _favSort(list) { return [...list].sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0)); }
@@ -709,10 +739,16 @@ class Component extends DCLogic {
   renderVals() {
     const s = this.state;
     const tab = s.tab;
-    const q = s.query.trim().toLowerCase();
-    const matches = r => !q || r.title.toLowerCase().includes(q) || r.ings.some(i => i.n.toLowerCase().includes(q));
+    const rawq = s.query.trim();
+    const nq = this._normSearch(rawq);
+    // Match against title, tags/keywords, and ingredient names — with spelling
+    // variants normalized so e.g. 스프 and 수프 find each other.
+    const matches = r => !nq
+      || this._normSearch(r.title).includes(nq)
+      || (r.tags || []).some(t => this._normSearch(t).includes(nq))
+      || r.ings.some(i => this._normSearch(i.n).includes(nq));
     const tabRecipes = s.recipes.filter(r => r.tab === tab);
-    const ordered = q ? [...tabRecipes].sort((a, b) => (matches(b) ? 1 : 0) - (matches(a) ? 1 : 0)) : tabRecipes;
+    const ordered = rawq ? [...tabRecipes].sort((a, b) => (matches(b) ? 1 : 0) - (matches(a) ? 1 : 0)) : tabRecipes;
     const shown = ordered.map(r => {
       const isMatch = matches(r);
       const isDragging = s.dragId === r.id;
