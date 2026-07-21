@@ -91,7 +91,12 @@
         <button onClick="{{ pickCooking }}" style="flex: 1; padding: 12px 0; border-radius: 999px; border: none; background: {{ cookBg }}; color: {{ cookFg }}; font-size: 14px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; cursor: pointer;">Cooking</button>
         <button onClick="{{ pickBaking }}" style="flex: 1; padding: 12px 0; border-radius: 999px; border: none; background: {{ bakeBg }}; color: {{ bakeFg }}; font-size: 14px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; cursor: pointer;">Baking</button>
       </div>
-      <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search by name or ingredient&hellip;" style="width: calc(100% - 24px); margin: 14px 12px 5px; padding: 8px 16px; border-radius: 999px; border: 1.5px solid rgba(242,169,196,0.2); background: rgba(0,0,0,0.28); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); color: #FCEDE6; font-size: 14px; outline: none; box-sizing: border-box; align-self: center;">
+      <div style="position: relative; width: calc(100% - 24px); margin: 14px 12px 5px; align-self: center;">
+        <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search by name or ingredient&hellip;" style="width: 100%; padding: 8px 40px 8px 16px; border-radius: 999px; border: 1.5px solid rgba(242,169,196,0.2); background: rgba(0,0,0,0.28); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); color: #FCEDE6; font-size: 14px; outline: none; box-sizing: border-box;">
+        <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ clearQuery }}" style="position: absolute; top: 50%; right: 8px; transform: translateY(-50%); color: rgba(252,237,230,0.7); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 6px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="display: block;"><path d="M6 6 L18 18 M18 6 L6 18"></path></svg></div>
+        </sc-if>
+      </div>
     </div>
     <div style="position: relative; height: 18px; margin-top: -18px; z-index: 6; box-shadow: 0 14px 18px -4px rgba(0,0,0,0.7); pointer-events: none; opacity: {{ scrolledShadow }}; transition: opacity 0.2s;"></div>
     <div ref="{{ setListRef }}" onScroll="{{ onListScroll }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 22px 22px 210px; box-sizing: border-box;">
@@ -218,7 +223,6 @@
       <div style="position: absolute; inset: 0; z-index: 30; background: #550010; color: #FCEDE6; overflow-y: auto; padding: 10px 22px 40px; box-sizing: border-box;">
         <button onClick="{{ closeAdd }}" style="background: none; border: none; color: #F2A9C4; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; cursor: pointer; padding: 8px 0;">&larr; never mind</button>
         <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 34px; color: #F2A9C4; line-height: 1.1; margin-top: 10px;">Add a recipe</div>
-        <div style="font-size: 13px; color: rgba(252,237,230,0.7); margin-top: 8px; line-height: 1.5;">Paste any recipe text &mdash; a screenshot caption, a message from mom, a blog wall-of-text. I&rsquo;ll fill in the ingredients and how-to.</div>
         <div onClick="{{ photoClick }}" onDragOver="{{ photoDragOver }}" onDrop="{{ photoDrop }}" style="position: relative; border-radius: 16px; padding: 26px 18px; text-align: center; cursor: pointer; margin-top: 18px; background: #480009; border: 2px dotted rgba(242,169,196,0.75);">
           <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; color: #F2A9C4;">Snap or add a photo</div>
           <div style="font-size: 12px; color: rgba(252,237,230,0.6); margin-top: 6px;">cookbook page or handwritten card &middot; tap again to add each page of a multi-page recipe</div>
@@ -700,6 +704,7 @@ class Component extends DCLogic {
       pickCooking: () => this.setState({ tab: 'cooking' }),
       pickBaking: () => this.setState({ tab: 'baking' }),
       query: s.query, onQuery: e => this.setState({ query: e.target.value }),
+      hasQuery: !!s.query, clearQuery: () => this.setState({ query: '' }),
       setListRef: el => { this.listRef = el; },
       setInnerRef: el => { this.innerRef = el; },
       onListScroll: e => { const sc = e.target.scrollTop > 4; if (sc !== s.scrolled) this.setState({ scrolled: sc }); },
