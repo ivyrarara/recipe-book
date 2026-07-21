@@ -364,11 +364,14 @@ class Component extends DCLogic {
         const saved = JSON.parse(raw);
         if (saved && Array.isArray(saved.recipes)) {
           this._savedRef = saved.recipes;
-          this.setState({ recipes: saved.recipes, nextId: saved.nextId || this.state.nextId });
+          this.setState({ recipes: this._favSort(saved.recipes), nextId: saved.nextId || this.state.nextId });
         }
       }
     } catch (e) { /* ignore unreadable/blocked storage */ }
   }
+  // Group favorites to the top, preserving relative order within each group
+  // (stable sort) so drag-reorder positions stay consistent.
+  _favSort(list) { return [...list].sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0)); }
   // Rubber-band overscroll: damped pull distance, asymptotic toward ~150px.
   _rubber(x) { return (1 - 1 / (x / 150 + 1)) * 150; }
   // Spring the list content back to rest with a slight overshoot when released.
@@ -737,7 +740,7 @@ class Component extends DCLogic {
         toggleFav: e => {
           if (e && e.stopPropagation) e.stopPropagation();
           const rec = this.find(r.id);
-          if (rec) { rec.fav = !rec.fav; this.setState({ recipes: [...this.state.recipes] }); }
+          if (rec) { rec.fav = !rec.fav; this.setState({ recipes: this._favSort(this.state.recipes) }); }
         },
         removeRecipe: e => {
           if (e && e.stopPropagation) e.stopPropagation();
