@@ -45,6 +45,36 @@
   textarea::placeholder { color: #F2A9C4; opacity: 0.85; }
   input, textarea, button { font-family: inherit; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  /* Smoke: blurred light/dark red wisps drifting slowly inside the pill. */
+  .btn-reading { position: relative; overflow: hidden; background: #C4342B !important; isolation: isolate; }
+  .btn-reading::before, .btn-reading::after {
+    content: ''; position: absolute; inset: -70%; z-index: 0; pointer-events: none;
+    background-repeat: no-repeat; will-change: transform; filter: blur(13px);
+  }
+  .btn-reading::before {
+    background-image:
+      radial-gradient(26% 62% at 30% 45%, rgba(226,116,96,0.55), rgba(226,116,96,0) 72%),
+      radial-gradient(30% 66% at 74% 58%, rgba(108,20,13,0.85), rgba(108,20,13,0) 72%);
+    animation: smokeA 8s ease-in-out infinite, smokeFade 1.5s ease-out 1s both;
+  }
+  .btn-reading::after {
+    background-image:
+      radial-gradient(24% 58% at 66% 34%, rgba(236,138,116,0.45), rgba(236,138,116,0) 72%),
+      radial-gradient(30% 64% at 32% 68%, rgba(98,16,11,0.80), rgba(98,16,11,0) 72%);
+    animation: smokeB 10.5s ease-in-out infinite, smokeFade 1.5s ease-out 1s both;
+  }
+  @keyframes smokeFade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes smokeA {
+    0%   { transform: translate(-20%, 5%) scale(1.0); }
+    50%  { transform: translate(22%, -9%) scale(1.5); }
+    100% { transform: translate(-20%, 5%) scale(1.0); }
+  }
+  @keyframes smokeB {
+    0%   { transform: translate(18%, -5%) scale(1.4); }
+    50%  { transform: translate(-22%, 8%) scale(0.85); }
+    100% { transform: translate(18%, -5%) scale(1.4); }
+  }
+  .btn-reading > .rlabel { position: relative; z-index: 1; }
 </style>
 </helmet>
 <div style="height: 100vh; height: 100dvh; display: flex; justify-content: center; background: #550010;">
@@ -65,7 +95,7 @@
     </div>
     <div style="position: relative; height: 18px; margin-top: -18px; z-index: 6; box-shadow: 0 14px 18px -4px rgba(0,0,0,0.7); pointer-events: none; opacity: {{ scrolledShadow }}; transition: opacity 0.2s;"></div>
     <div ref="{{ setListRef }}" onScroll="{{ onListScroll }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 22px 22px 210px; box-sizing: border-box;">
-      <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div ref="{{ setInnerRef }}" style="display: flex; flex-direction: column; gap: 6px;">
         <sc-for list="{{ shown }}" as="r" hint-placeholder-count="3">
           <div ref="{{ r.setRef }}" onClick="{{ r.open }}" onPointerDown="{{ r.pressStart }}" onPointerUp="{{ r.pressCancel }}" onPointerCancel="{{ r.pressCancel }}" style="{{ r.rowStyle }}">
             <sc-if value="{{ r.hasImg }}" hint-placeholder-val="{{ false }}">
@@ -211,7 +241,7 @@
           <div style="flex: 1; height: 0.6px; background: rgba(242,169,196,0.4);"></div>
         </div>
         <textarea value="{{ paste }}" onChange="{{ onPaste }}" placeholder="Paste recipe text here&hellip;" style="width: 100%; height: 130px; padding: 14px; border-radius: 16px; border: 1.5px solid rgba(242,169,196,0.5); background: #3D000B; color: #A8324B; font-size: 14px; line-height: 1.5; resize: none; outline: none; box-sizing: border-box;"></textarea>
-        <button onClick="{{ parseText }}" style="width: 100%; margin-top: 12px; padding: 15px 0; border-radius: 999px; border: none; background: #C4342B; color: #FCEDE6; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; cursor: pointer;">{{ parseLabel }}</button>
+        <button onClick="{{ parseText }}" class="{{ parseBtnClass }}" style="width: 100%; margin-top: 12px; padding: 15px 0; border-radius: 999px; border: none; background: #C4342B; color: #FCEDE6; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; cursor: pointer;"><span class="rlabel">{{ parseLabel }}</span></button>
         <sc-if value="{{ hasErr }}" hint-placeholder-val="{{ false }}">
           <div style="margin-top: 10px; font-size: 13px; color: #F2A9C4; font-style: italic;">{{ err }}</div>
         </sc-if>
@@ -307,6 +337,17 @@ class Component extends DCLogic {
         }
       }
     } catch (e) { /* ignore unreadable/blocked storage */ }
+  }
+  // Rubber-band overscroll: damped pull distance, asymptotic toward ~150px.
+  _rubber(x) { return (1 - 1 / (x / 150 + 1)) * 150; }
+  // Spring the list content back to rest with a slight overshoot when released.
+  _springBack() {
+    const inner = this.innerRef;
+    if (inner && this._overs) {
+      inner.style.transition = 'transform 0.55s cubic-bezier(0.22,1.3,0.36,1)';
+      inner.style.transform = 'translateY(0)';
+      this._overs = false;
+    }
   }
   persist() {
     if (this.state.recipes === this._savedRef) return; // recipes unchanged since last save
@@ -582,7 +623,7 @@ class Component extends DCLogic {
       return {
         id: r.id, title: r.title, initial: r.title[0],
         img: r.img || '', hasImg: !!r.img, noImg: !r.img,
-        meta: [r.time, r.ings.length + ' ingredients', ...r.tags].filter(Boolean).join(' \u00B7 '),
+        meta: [r.time, ...r.tags].filter(Boolean).join(' \u00B7 '),
         open: () => { if (!this.dragMoved) this.setState({ selId: r.id, editIdx: -1, titleEditing: false }); },
         // Stop the row's press/drag from arming when tapping the delete button.
         stopDown: e => { if (e && e.stopPropagation) e.stopPropagation(); },
@@ -623,13 +664,27 @@ class Component extends DCLogic {
                   clearTimeout(this._pressTimer);
                 }
               }
-              if (this._scrolling && this.listRef) this.listRef.scrollTop = this._scrollStartTop - (ev.clientY - this._startY);
+              if (this._scrolling && this.listRef) {
+                const desired = this._scrollStartTop - (ev.clientY - this._startY);
+                const max = this.listRef.scrollHeight - this.listRef.clientHeight;
+                const inner = this.innerRef;
+                if (desired < 0) {
+                  this.listRef.scrollTop = 0;
+                  if (inner) { inner.style.transition = 'none'; inner.style.transform = 'translateY(' + this._rubber(-desired) + 'px)'; this._overs = true; }
+                } else if (desired > max) {
+                  this.listRef.scrollTop = max;
+                  if (inner) { inner.style.transition = 'none'; inner.style.transform = 'translateY(' + (-this._rubber(desired - max)) + 'px)'; this._overs = true; }
+                } else {
+                  this.listRef.scrollTop = desired;
+                  if (inner && this._overs) { inner.style.transition = 'none'; inner.style.transform = 'translateY(0)'; this._overs = false; }
+                }
+              }
             };
             window.addEventListener('pointermove', this._armedMove);
           }
           this._pressTimer = setTimeout(() => this.beginDrag(r.id, this._liveY), 420);
         },
-        pressCancel: () => { clearTimeout(this._pressTimer); if (!this.state.dragId) this.setState({ armId: null }); },
+        pressCancel: () => { clearTimeout(this._pressTimer); this._springBack(); if (!this.state.dragId) this.setState({ armId: null }); },
         rowStyle: {
           display: 'flex', gap: 14, alignItems: 'center', background: '#3D000B', borderRadius: 18, padding: 14,
           cursor: 'pointer', position: 'relative', zIndex: isDragging ? 5 : 1,
@@ -646,6 +701,7 @@ class Component extends DCLogic {
       pickBaking: () => this.setState({ tab: 'baking' }),
       query: s.query, onQuery: e => this.setState({ query: e.target.value }),
       setListRef: el => { this.listRef = el; },
+      setInnerRef: el => { this.innerRef = el; },
       onListScroll: e => { const sc = e.target.scrollTop > 4; if (sc !== s.scrolled) this.setState({ scrolled: sc }); },
       scrolledShadow: s.scrolled ? 1 : 0,
       cookBg: tab === 'cooking' ? active[0] : idle[0], cookFg: tab === 'cooking' ? active[1] : idle[1],
@@ -669,6 +725,7 @@ class Component extends DCLogic {
       photoDrop: e => { e.preventDefault(); const fs = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : []; if (fs.length) this.addPhotos(fs); },
       parsing: s.parsing, err: s.err, hasErr: !!s.err,
       parseLabel: s.parsing ? 'Reading recipe\u2026' : "Save this recipe",
+      parseBtnClass: s.parsing ? 'btn-reading' : '',
     };
     const r = this.find(s.selId);
     vals.hasSel = !!r;
