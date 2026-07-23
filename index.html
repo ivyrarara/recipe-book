@@ -81,7 +81,7 @@
   <div style="position: relative; width: 100%; max-width: 480px; height: 100%; background: #550010; overflow: hidden; font-family: 'DM Sans', sans-serif; color: #FCEDE6; display: flex; flex-direction: column;">
 
     <!-- Background watermark: GPT title art, pinned top-left, behind all content. -->
-    <img src="title.png" alt="" style="position: absolute; top: -40px; left: 0; width: 340px; opacity: 0.15; z-index: 0; pointer-events: none;">
+    <img src="title.png" alt="" style="position: absolute; top: -2px; left: 5px; width: 300px; opacity: 0.22; z-index: 0; pointer-events: none;">
 
     <!-- ══ BOOK ══ -->
     <div style="position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column;">
@@ -89,7 +89,7 @@
       <div style="position: relative; margin: -28px 0 0 -34px; padding: 0 22px; height: 46px;">
         <div style="position: absolute; top: 32px; right: -8px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: rgba(252,237,230,0.6); z-index: 2;">{{ countLabel }}</div>
       </div>
-      <div style="display: flex; gap: 8px; margin-top: 80px; position: relative; z-index: 3;">
+      <div style="display: flex; gap: 8px; margin-top: 70px; position: relative; z-index: 3;">
         <button onClick="{{ pickCooking }}" style="flex: 1; padding: 12px 0; border-radius: 999px; border: none; background: {{ cookBg }}; color: {{ cookFg }}; font-size: 14px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; cursor: pointer;">Cooking</button>
         <button onClick="{{ pickBaking }}" style="flex: 1; padding: 12px 0; border-radius: 999px; border: none; background: {{ bakeBg }}; color: {{ bakeFg }}; font-size: 14px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; cursor: pointer;">Baking</button>
       </div>
@@ -101,7 +101,7 @@
       </div>
     </div>
     <div style="position: relative; height: 18px; margin-top: -18px; z-index: 6; box-shadow: 0 14px 18px -4px rgba(0,0,0,0.7); pointer-events: none; opacity: {{ scrolledShadow }}; transition: opacity 0.2s;"></div>
-    <div ref="{{ setListRef }}" onScroll="{{ onListScroll }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 22px 22px 210px; box-sizing: border-box;">
+    <div ref="{{ setListRef }}" onScroll="{{ onListScroll }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 57px 22px 210px; box-sizing: border-box;">
       <div ref="{{ setInnerRef }}" style="display: flex; flex-direction: column; gap: 6px;">
         <sc-for list="{{ shown }}" as="r" hint-placeholder-count="3">
           <div ref="{{ r.setRef }}" onClick="{{ r.open }}" onPointerDown="{{ r.pressStart }}" onPointerUp="{{ r.pressCancel }}" onPointerCancel="{{ r.pressCancel }}" style="{{ r.rowStyle }}">
