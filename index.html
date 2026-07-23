@@ -108,7 +108,7 @@
         <button onClick="{{ pickCooking }}" style="flex: 1; padding: 12px 0; border-radius: 999px; border: none; background: {{ cookBg }}; color: {{ cookFg }}; font-size: 14px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; cursor: pointer;">Cooking</button>
         <button onClick="{{ pickBaking }}" style="flex: 1; padding: 12px 0; border-radius: 999px; border: none; background: {{ bakeBg }}; color: {{ bakeFg }}; font-size: 14px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; cursor: pointer;">Baking</button>
       </div>
-      <div style="position: relative; width: calc(100% - 24px); margin: 14px 12px 15px; align-self: center;">
+      <div style="position: relative; width: calc(100% - 24px); margin: 14px 12px 30px; align-self: center;">
         <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search by name or ingredient&hellip;" style="width: 100%; padding: 8px 40px 8px 16px; border-radius: 999px; border: 1.5px solid rgba(242,169,196,0.2); background: #3D000B; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); color: #FCEDE6; font-size: 14px; outline: none; box-sizing: border-box;">
         <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}">
           <div onClick="{{ clearQuery }}" style="position: absolute; top: 50%; right: 8px; transform: translateY(-50%); color: rgba(252,237,230,0.7); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 6px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="display: block;"><path d="M6 6 L18 18 M18 6 L6 18"></path></svg></div>
@@ -385,6 +385,14 @@ class Component extends DCLogic {
         }
       }
     } catch (e) { /* ignore unreadable/blocked storage */ }
+    // Guard: while the list lays out (images loading, many rows), a transient
+    // scroll event can flip the "scrolled" shadow on and leave it stuck at the
+    // top on launch. Re-sync a few times so the shadow starts hidden until the
+    // user actually scrolls. Never moves an active scroll position.
+    const syncShadow = () => {
+      if (this.listRef && this.listRef.scrollTop <= 8 && this.state.scrolled) this.setState({ scrolled: false });
+    };
+    [0, 80, 350, 800, 1500, 3000].forEach(t => setTimeout(syncShadow, t));
   }
   // Normalize text for searching: lowercase, strip spaces, and fold common
   // ambiguous Korean spellings so variants match each other (스프/수프 etc.).
@@ -884,7 +892,7 @@ class Component extends DCLogic {
       hasQuery: !!s.query, clearQuery: () => this.setState({ query: '' }),
       setListRef: el => { this.listRef = el; },
       setInnerRef: el => { this.innerRef = el; },
-      onListScroll: e => { const sc = e.target.scrollTop > 4; if (sc !== s.scrolled) this.setState({ scrolled: sc }); },
+      onListScroll: e => { const sc = e.target.scrollTop > 8; if (sc !== s.scrolled) this.setState({ scrolled: sc }); },
       scrolledShadow: s.scrolled ? 1 : 0,
       cookBg: tab === 'cooking' ? active[0] : idle[0], cookFg: tab === 'cooking' ? active[1] : idle[1],
       bakeBg: tab === 'baking' ? active[0] : idle[0], bakeFg: tab === 'baking' ? active[1] : idle[1],
