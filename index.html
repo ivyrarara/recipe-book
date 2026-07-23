@@ -135,7 +135,7 @@
         </sc-if>
       </div>
     </div>
-    <div style="position: relative; height: 18px; margin-top: -18px; z-index: 6; box-shadow: 0 14px 18px -4px rgba(0,0,0,0.7); pointer-events: none; opacity: {{ scrolledShadow }}; transition: opacity 0.2s;"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 226px; height: 18px; z-index: 6; box-shadow: 0 14px 18px -4px rgba(0,0,0,0.7); pointer-events: none; opacity: {{ scrolledShadow }}; transition: opacity 0.12s;"></div>
     <div ref="{{ setListRef }}" onScroll="{{ onListScroll }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 57px 22px 210px; box-sizing: border-box;">
       <div ref="{{ setInnerRef }}" style="display: flex; flex-direction: column; gap: 6px;">
         <sc-for list="{{ shown }}" as="r" hint-placeholder-count="3">
@@ -335,7 +335,7 @@ class Component extends DCLogic {
   state = {
     tab: 'cooking', selId: null, screen: 'book', justAdded: false,
     cropEditing: false, cropX: 50, cropY: 50,
-    dragId: null, dragClientY: 0, query: '', armId: null, scrolled: false,
+    dragId: null, dragClientY: 0, query: '', armId: null, shadowOp: 0,
     paste: '', addLink: '', pendingPhotos: [], parsing: false, err: '', editIdx: -1, editVal: '', modInput: '', newIngQty: '', newIngName: '', nameEditIdx: -1, nameEditVal: '', titleEditing: false, titleVal: '', linkEditing: false, linkInput: '',
     recipes: [
       { id: 1, tab: 'cooking', title: 'Shakshuka', time: '30 min', servings: 2, factor: 1,
@@ -414,7 +414,7 @@ class Component extends DCLogic {
     // top on launch. Re-sync a few times so the shadow starts hidden until the
     // user actually scrolls. Never moves an active scroll position.
     const syncShadow = () => {
-      if (this.listRef && this.listRef.scrollTop <= 8 && this.state.scrolled) this.setState({ scrolled: false });
+      if (this.listRef && this.listRef.scrollTop <= 12 && this.state.shadowOp !== 0) this.setState({ shadowOp: 0 });
     };
     [0, 80, 350, 800, 1500, 3000].forEach(t => setTimeout(syncShadow, t));
   }
@@ -916,8 +916,15 @@ class Component extends DCLogic {
       hasQuery: !!s.query, clearQuery: () => this.setState({ query: '' }),
       setListRef: el => { this.listRef = el; },
       setInnerRef: el => { this.innerRef = el; },
-      onListScroll: e => { const sc = e.target.scrollTop > 8; if (sc !== s.scrolled) this.setState({ scrolled: sc }); },
-      scrolledShadow: s.scrolled ? 1 : 0,
+      onListScroll: e => {
+        // Fade the top shadow in gradually, only as the first row nears tucking
+        // under the title's decorative line (~27px of scroll) — not the instant
+        // scrolling starts. Invisible below 12px, full by ~48px.
+        const y = e.target.scrollTop;
+        const op = Math.max(0, Math.min(1, (y - 12) / 36));
+        if (Math.abs(op - s.shadowOp) > 0.02) this.setState({ shadowOp: op });
+      },
+      scrolledShadow: s.shadowOp,
       cookBg: tab === 'cooking' ? active[0] : idle[0], cookFg: tab === 'cooking' ? active[1] : idle[1],
       bakeBg: tab === 'baking' ? active[0] : idle[0], bakeFg: tab === 'baking' ? active[1] : idle[1],
       countLabel: String(shown.length).padStart(3, '0') + (shown.length === 1 ? ' recipe' : ' recipes'),
