@@ -3,12 +3,13 @@
 //   cache when offline. This avoids serving a stale index.html after updates.
 // - Other assets (vendor, icons, title): cache-first with network fallback.
 // Bump CACHE whenever the precached asset list changes to force a refresh.
-const CACHE = 'recipe-book-v2';
+const CACHE = 'recipe-book-v3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './title.png',
+  './tagline.png',
   './public/icon-192.png',
   './public/icon-512.png',
   './vendor/react.production.min.js',
