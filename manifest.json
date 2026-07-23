@@ -1,0 +1,15 @@
+{
+  "name": "My recipe book",
+  "short_name": "Recipe book",
+  "description": "A mobile recipe book with AI-assisted adding, scaling, and search.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#550010",
+  "theme_color": "#550010",
+  "icons": [
+    { "src": "public/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "public/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
