@@ -93,7 +93,7 @@
         <button onClick="{{ pickCooking }}" style="flex: 1; padding: 12px 0; border-radius: 999px; border: none; background: {{ cookBg }}; color: {{ cookFg }}; font-size: 14px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; cursor: pointer;">Cooking</button>
         <button onClick="{{ pickBaking }}" style="flex: 1; padding: 12px 0; border-radius: 999px; border: none; background: {{ bakeBg }}; color: {{ bakeFg }}; font-size: 14px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; cursor: pointer;">Baking</button>
       </div>
-      <div style="position: relative; width: calc(100% - 24px); margin: 14px 12px 5px; align-self: center;">
+      <div style="position: relative; width: calc(100% - 24px); margin: 14px 12px 15px; align-self: center;">
         <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search by name or ingredient&hellip;" style="width: 100%; padding: 8px 40px 8px 16px; border-radius: 999px; border: 1.5px solid rgba(242,169,196,0.2); background: #3D000B; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); color: #FCEDE6; font-size: 14px; outline: none; box-sizing: border-box;">
         <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}">
           <div onClick="{{ clearQuery }}" style="position: absolute; top: 50%; right: 8px; transform: translateY(-50%); color: rgba(252,237,230,0.7); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 6px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="display: block;"><path d="M6 6 L18 18 M18 6 L6 18"></path></svg></div>
