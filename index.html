@@ -49,6 +49,25 @@
 <script src="./vendor/dc-runtime.js"></script>
 </head>
 <body>
+<!-- Launch splash: a large branded title on the app's burgundy, shown while
+     the app boots and faded out once it's ready. Matches the PWA splash bg so
+     the small system splash flows into this larger one. -->
+<div id="app-splash" style="position: fixed; inset: 0; z-index: 99999; background: #550010; display: flex; align-items: center; justify-content: center; transition: opacity 0.45s ease; pointer-events: none;">
+  <img src="title.png" alt="My recipe book" style="width: 74%; max-width: 400px; height: auto;">
+</div>
+<script>
+  (function () {
+    function hide() {
+      var s = document.getElementById('app-splash');
+      if (!s) return;
+      s.style.opacity = '0';
+      setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 500);
+    }
+    // Fade out once the app has had a moment to render its first screen.
+    if (document.readyState === 'complete') setTimeout(hide, 550);
+    else window.addEventListener('load', function () { setTimeout(hide, 450); });
+  })();
+</script>
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
