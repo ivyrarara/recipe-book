@@ -1,0 +1,31 @@
+# CLAUDE.md — 작업 가이드
+
+Recipe Book 웹앱 작업 시 지켜야 할 규칙과 맥락. (사용자와는 한국어로 소통)
+
+## 커밋 & 문서화 규칙
+- **커밋 메시지에 의사결정 배경과 이유를 남긴다.** diff만으로는 안 보이는 "왜"를 적는다: 무엇이 문제였고, 어떤 트레이드오프로 이 선택을 했는지.
+- 의미 있는 변경은 **`DECISIONS.md`에도 항목을 추가**한다. 형식: **배경 → 결정 → 이유** (필요 시 수치/파라미터/주의사항 포함).
+- 사소한 오타·포맷 변경은 문서 항목까지는 필요 없다.
+
+## 배포 절차 (중요)
+- **배포 전에 반드시 프리뷰 스크린샷을 먼저 공유**하고, 사용자가 **"배포"** 라고 할 때만 `main`에 커밋·푸시한다. (푸시 시 GitHub Pages 자동 배포)
+- 앱 화면에 영향 없는 문서 변경은 프리뷰 생략 가능.
+- github.io 직접 접속이 막힌 환경이라, 배포 성공은 **GitHub Actions 실행 상태**로 확인한다.
+
+## 앱 구조
+- `index.html` 하나가 앱 전체 (DCLogic 템플릿 `<x-dc>`/`<sc-if>`/`<sc-for>`/`{{ }}` + `class ... extends DCLogic`). 빌드 스텝 없음, `vendor/`에 React·dc-runtime 로컬 로드.
+- PWA: `manifest.json`, `sw.js`(HTML은 network-first, 에셋 cache-first). 프리캐시 목록 바뀌면 `sw.js`의 `CACHE` 버전을 올린다.
+- 타이틀/태그라인/아이콘 이미지는 GPT 시안에서 알파 키로 추출한 PNG (`title.png`, `tagline.png`, `public/icon-*.png`). 웹폰트로 대체하지 않는다.
+
+## 레이아웃 불변식 (깨지기 쉬움)
+- 배경 워터마크(`title.png`)의 **장식 밑줄은 y≈244px에 고정**이다(워터마크가 고정 300px 폭, top −2px). 기준 뷰포트 390×844.
+- **리스트의 잘림(overflow-clip) 경계 = 상단 그림자선 = 이 장식선(244px)** 이 일치해야 한다. 항목이 그림자 아래로 정확히 사라져야 하기 때문.
+- 헤더의 탭/검색창을 옮길 때 그 아래 리스트가 딸려 움직여 244 정렬이 깨질 수 있다. **한 요소만 이동하려면 그 요소의 `margin-top`/`margin-bottom`을 같은 값만큼 반대로** 조절해 아래 흐름을 상쇄한다. 이동 후 `listTop`을 재측정해 244인지 확인한다.
+- 상단 그림자 불투명도는 스크롤량에 비례: `op = clamp((scrollTop - 12) / 36, 0, 1)` (상태값 `shadowOp`).
+
+## 로컬 렌더/측정 (미리보기용)
+- 로컬 서버: `/tmp/rb`에 `index.html`·에셋 복사 후 `python3 -m http.server 8080`.
+- Playwright(Chromium): `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, `args:['--no-sandbox']`, 뷰포트 390×844 @2x. 시드 레시피가 4개뿐이라 스크롤 확인은 뷰포트 높이를 줄여서(예: 560) 테스트.
+- 이미지 합성/추출은 Pillow(PIL) 사용.
+
+자세한 결정 이력은 `DECISIONS.md` 참고.
