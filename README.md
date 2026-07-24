@@ -17,6 +17,7 @@ key stays off the client.
 | `vendor/` | React, ReactDOM, and the `dc-runtime` that renders the template. Loaded locally, so the page has no external runtime dependency. |
 | `proxy/` | Cloudflare Worker that forwards AI-parsing requests to the Anthropic API. |
 | `.github/workflows/deploy.yml` | Publishes the site to GitHub Pages. |
+| `DECISIONS.md` | Design/UX decision log — background and reasoning behind notable changes. |
 
 ## Deploy
 
